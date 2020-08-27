@@ -19,6 +19,7 @@ import {
 import {StateContextCache} from "../../../src/db/api/beacon/stateContextCache";
 import {SeenAttestationCache} from "../../../src/db/api/beacon/seenAttestationCache";
 import {CheckpointStateCache} from "../../../src/db/api/beacon/stateContextCheckpointsCache";
+import {ActiveValidatorCache} from "../../../src/db/api/beacon/activeValidatorCache";
 import {config as minimalConfig} from "@chainsafe/lodestar-config/lib/presets/minimal";
 
 export class StubbedBeaconDb extends BeaconDb {
@@ -42,6 +43,7 @@ export class StubbedBeaconDb extends BeaconDb {
 
   public checkpointStateCache: SinonStubbedInstance<CheckpointStateCache> & CheckpointStateCache;
   public seenAttestationCache: SinonStubbedInstance<SeenAttestationCache> & SeenAttestationCache;
+  public activeValidatorCache: SinonStubbedInstance<ActiveValidatorCache> & ActiveValidatorCache;
 
   public processBlockOperations: SinonStubbedInstance<(signedBlock: SignedBeaconBlock) => Promise<void>> &
     ((signedBlock: SignedBeaconBlock) => Promise<void>);
@@ -65,6 +67,7 @@ export class StubbedBeaconDb extends BeaconDb {
     this.depositDataRoot = sinon.createStubInstance(DepositDataRootRepository) as any;
     this.eth1Data = sinon.createStubInstance(Eth1DataRepository) as any;
     this.seenAttestationCache = sinon.createStubInstance(SeenAttestationCache) as any;
+    this.activeValidatorCache = sinon.createStubInstance(ActiveValidatorCache) as any;
     this.checkpointStateCache = sinon.createStubInstance(CheckpointStateCache) as any;
     this.processBlockOperations = sinon.stub(this, "processBlockOperations") as any;
   }

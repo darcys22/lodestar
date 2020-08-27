@@ -167,6 +167,7 @@ export class ValidatorApi implements IValidatorApi {
       }
       return validatorIndex;
     });
+    await this.db.activeValidatorCache.batchAdd(validatorIndexes);
     return validatorIndexes.map((validatorIndex) => {
       const validator = state.validators[validatorIndex];
       if (!validator) {

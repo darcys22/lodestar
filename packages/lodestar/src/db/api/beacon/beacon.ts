@@ -22,6 +22,7 @@ import {
 import {StateContextCache} from "./stateContextCache";
 import {CheckpointStateCache} from "./stateContextCheckpointsCache";
 import {SeenAttestationCache} from "./seenAttestationCache";
+import {ActiveValidatorCache} from "./activeValidatorCache";
 
 export class BeaconDb extends DatabaseService implements IBeaconDb {
   public badBlock: BadBlockRepository;
@@ -29,6 +30,7 @@ export class BeaconDb extends DatabaseService implements IBeaconDb {
   public stateCache: StateContextCache;
   public checkpointStateCache: CheckpointStateCache;
   public seenAttestationCache: SeenAttestationCache;
+  public activeValidatorCache: ActiveValidatorCache;
   public blockArchive: BlockArchiveRepository;
   public stateArchive: StateArchiveRepository;
 
@@ -49,6 +51,7 @@ export class BeaconDb extends DatabaseService implements IBeaconDb {
     this.stateCache = new StateContextCache();
     this.checkpointStateCache = new CheckpointStateCache(this.config);
     this.seenAttestationCache = new SeenAttestationCache(5000);
+    this.activeValidatorCache = new ActiveValidatorCache();
     this.blockArchive = new BlockArchiveRepository(this.config, this.db);
     this.stateArchive = new StateArchiveRepository(this.config, this.db);
     this.attestation = new AttestationRepository(this.config, this.db);

@@ -6,10 +6,12 @@ import {IBeaconChain} from "../../chain";
 import {ForkDigest} from "@chainsafe/lodestar-types";
 import {toHexString} from "@chainsafe/ssz";
 import {getCurrentSlot, computeStartSlotAtEpoch, computeForkDigest} from "@chainsafe/lodestar-beacon-state-transition";
+import {IBeaconDb} from "../../db";
 
 export interface IInteropSubnetsJoiningModules {
   network: INetwork;
   chain: IBeaconChain;
+  db: IBeaconDb;
   logger: ILogger;
 }
 
@@ -17,6 +19,7 @@ export class InteropSubnetsJoiningTask {
   private readonly config: IBeaconConfig;
   private readonly network: INetwork;
   private readonly chain: IBeaconChain;
+  private readonly db: IBeaconDb;
   private readonly logger: ILogger;
   private currentSubnets: Set<number>;
   private nextForkSubnets: Set<number>;
@@ -30,6 +33,7 @@ export class InteropSubnetsJoiningTask {
     this.config = config;
     this.network = modules.network;
     this.chain = modules.chain;
+    this.db = modules.db;
     this.logger = modules.logger;
     this.currentSubnets = new Set();
     this.nextForkSubnets = new Set();
@@ -53,8 +57,10 @@ export class InteropSubnetsJoiningTask {
   }
 
   private run = async (forkDigest: ForkDigest): Promise<void> => {
-    for (let i = 0; i < this.config.params.RANDOM_SUBNETS_PER_VALIDATOR; i++) {
-      this.subscribeToRandomSubnet(forkDigest);
+    const validators = await this.db.activeValidatorCache.values();
+    const numSubscriptions = this.config.params.RANDOM_SUBNETS_PER_VALIDATOR * validators.length;
+    for (let i = 0; i < numSubscriptions; i++) {
+      await this.subscribeToRandomSubnet(forkDigest);
     }
   };
 
@@ -125,7 +131,7 @@ export class InteropSubnetsJoiningTask {
    * This can be either for the current fork or next fork.
    * @return choosen subnet
    */
-  private subscribeToRandomSubnet(forkDigest: ForkDigest): number {
+  private async subscribeToRandomSubnet(forkDigest: ForkDigest): Promise<number> {
     const subnet = randBetween(0, ATTESTATION_SUBNET_COUNT);
     this.network.gossip.subscribeToAttestationSubnet(forkDigest, subnet, this.handleWireAttestation);
     const attnets = this.network.metadata.attnets;
@@ -148,9 +154,9 @@ export class InteropSubnetsJoiningTask {
         subnet
       ) as unknown) as NodeJS.Timeout
     );
-    if (timers.length > this.config.params.RANDOM_SUBNETS_PER_VALIDATOR) {
-      timers.shift();
-    }
+    const validators = await this.db.activeValidatorCache.values();
+    const numSubscriptions = this.config.params.RANDOM_SUBNETS_PER_VALIDATOR * validators.length;
+    while (timers.length > numSubscriptions) timers.shift();
     const subnets = this.config.types.ForkDigest.equals(forkDigest, this.currentForkDigest)
       ? this.currentSubnets
       : this.nextForkSubnets;
@@ -169,7 +175,7 @@ export class InteropSubnetsJoiningTask {
       ? this.currentSubnets
       : this.nextForkSubnets;
     subnets.delete(subnet);
-    this.subscribeToRandomSubnet(forkDigest);
+    await this.subscribeToRandomSubnet(forkDigest);
   };
 
   private handleWireAttestation = (): void => {

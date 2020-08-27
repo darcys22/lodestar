@@ -12,6 +12,7 @@ import {ILogger} from "@chainsafe/lodestar-utils/lib/logger";
 import {IBeaconSync} from "../sync";
 import {InteropSubnetsJoiningTask} from "./tasks/interopSubnetsJoiningTask";
 import {INetwork} from "../network";
+import {CleanUpTask} from "./tasks/cleanUpTask";
 
 export interface ITasksModules {
   db: IBeaconDb;
@@ -34,6 +35,7 @@ export class TasksService implements IService {
   private readonly logger: ILogger;
 
   private interopSubnetsTask: InteropSubnetsJoiningTask;
+  private cleanUpTask: CleanUpTask;
 
   public constructor(config: IBeaconConfig, modules: ITasksModules) {
     this.config = config;
@@ -44,7 +46,13 @@ export class TasksService implements IService {
     this.network = modules.network;
     this.interopSubnetsTask = new InteropSubnetsJoiningTask(this.config, {
       chain: this.chain,
+      db: this.db,
       network: this.network,
+      logger: this.logger,
+    });
+    this.cleanUpTask = new CleanUpTask(this.config, {
+      chain: this.chain,
+      db: this.db,
       logger: this.logger,
     });
   }
@@ -53,13 +61,14 @@ export class TasksService implements IService {
     this.chain.forkChoice.on("prune", this.handleFinalizedCheckpointChores);
     this.network.gossip.on("gossip:start", this.handleGossipStart);
     this.network.gossip.on("gossip:stop", this.handleGossipStop);
+    await this.cleanUpTask.start();
   }
 
   public async stop(): Promise<void> {
     this.chain.forkChoice.removeListener("prune", this.handleFinalizedCheckpointChores);
     this.network.gossip.removeListener("gossip:start", this.handleGossipStart);
     this.network.gossip.removeListener("gossip:stop", this.handleGossipStop);
-    await this.interopSubnetsTask.stop();
+    await Promise.all([this.interopSubnetsTask.stop(), this.cleanUpTask.stop()]);
   }
 
   private handleGossipStart = async (): Promise<void> => {

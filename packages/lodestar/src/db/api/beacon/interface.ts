@@ -21,6 +21,7 @@ import {
 import {StateContextCache} from "./stateContextCache";
 import {CheckpointStateCache} from "./stateContextCheckpointsCache";
 import {SeenAttestationCache} from "./seenAttestationCache";
+import {ActiveValidatorCache} from "./activeValidatorCache";
 
 /**
  * The DB service manages the data layer of the beacon chain
@@ -40,6 +41,9 @@ export interface IBeaconDb {
 
   //cache
   seenAttestationCache: SeenAttestationCache;
+
+  // active validators connected to this node
+  activeValidatorCache: ActiveValidatorCache;
 
   // finalized blocks
   blockArchive: BlockArchiveRepository;
