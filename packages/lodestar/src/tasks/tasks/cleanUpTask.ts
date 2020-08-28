@@ -1,7 +1,7 @@
 import {IBeaconChain} from "../../chain";
 import {IBeaconConfig} from "@chainsafe/lodestar-config";
 import {ILogger} from "@chainsafe/lodestar-utils";
-import {Epoch} from "@chainsafe/lodestar-types";
+import {Epoch, ValidatorIndex} from "@chainsafe/lodestar-types";
 import {IBeaconDb} from "../../db";
 
 export interface ICleanUpModules {
@@ -34,16 +34,20 @@ export class CleanUpTask {
     this.chain.clock.unsubscribeFromNewEpoch(this.run);
   }
 
-  private run = async (epoch: Epoch): Promise<void> => {
-    this.logger.info("Run CleanUpTask at epoch ", epoch);
+  public run = async (epoch: Epoch): Promise<void> => {
+    this.logger.info("Run CleanUpTask at epoch", epoch);
     this.logger.profile("CleanUpTask");
-    const indexes = await this.db.activeValidatorCache.values();
-    const headState = await this.chain.getHeadState();
-    await Promise.all(
-      indexes
-        .filter((index) => headState.validators[index].exitEpoch <= epoch)
-        .map((index) => this.db.activeValidatorCache.delete(index))
-    );
+    await this.cleanupActiveValidatorCache(epoch);
     this.logger.profile("CleanUpTask");
   };
+
+  private async cleanupActiveValidatorCache(epoch: Epoch): Promise<void> {
+    const indexes = await this.db.activeValidatorCache.values();
+    const toDelete: ValidatorIndex[] = [];
+    for (const index of indexes) {
+      const lastActiveEpoch = (await this.db.activeValidatorCache.get(index))?.epoch as Epoch;
+      if (lastActiveEpoch < epoch - 1) toDelete.push(index);
+    }
+    await this.db.activeValidatorCache.batchDelete(toDelete);
+  }
 }

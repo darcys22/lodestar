@@ -1,4 +1,4 @@
-import {ValidatorIndex} from "@chainsafe/lodestar-types";
+import {ValidatorIndex, Epoch} from "@chainsafe/lodestar-types";
 
 /**
  * In memory cache of connected validators to this node.
@@ -6,25 +6,40 @@ import {ValidatorIndex} from "@chainsafe/lodestar-types";
  * Similar API to Repository
  */
 export class ActiveValidatorCache {
-  private cache: Set<ValidatorIndex>;
+  // validator index and last accessed epoch
+  private cache: Map<ValidatorIndex, Epoch>;
 
   constructor() {
-    this.cache = new Set();
+    this.cache = new Map();
   }
 
-  public async add(index: ValidatorIndex): Promise<void> {
-    this.cache.add(index);
+  public async get(index: ValidatorIndex): Promise<{index: ValidatorIndex; epoch: Epoch} | null> {
+    const epoch = this.cache.get(index);
+    if (typeof epoch !== "number") return null;
+
+    return {
+      index,
+      epoch: epoch as Epoch,
+    };
   }
 
-  public async batchAdd(indexes: ValidatorIndex[] = []): Promise<void> {
-    indexes.forEach((index) => this.add(index));
+  public async add(index: ValidatorIndex, epoch: Epoch): Promise<void> {
+    this.cache.set(index, epoch);
   }
 
   public async delete(index: ValidatorIndex): Promise<void> {
     this.cache.delete(index);
   }
 
+  public async batchDelete(indexes: ValidatorIndex[] = []): Promise<void> {
+    indexes.forEach((index) => this.delete(index));
+  }
+
   public async values(): Promise<ValidatorIndex[]> {
-    return Array.from(this.cache);
+    return Array.from(this.cache.keys());
+  }
+
+  public clear(): void {
+    this.cache = new Map();
   }
 }
