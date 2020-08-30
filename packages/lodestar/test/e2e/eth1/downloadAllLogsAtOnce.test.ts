@@ -10,8 +10,11 @@ import {toHexString, fromHexString} from "@chainsafe/ssz";
 import {computeDomain, computeSigningRoot, DomainType} from "@chainsafe/lodestar-beacon-state-transition";
 import {verify, initBLS, verifyMultiple, aggregateSignatures} from "@chainsafe/bls";
 import {IBeaconConfig} from "@chainsafe/lodestar-config";
-import {DepositData} from "@chainsafe/lodestar-types";
+import {DepositData, Bytes32, Number64, Deposit} from "@chainsafe/lodestar-types";
 import {blsBatchVerifyThreaded} from "./blsBatchVerifyThreaded";
+import {initializeBeaconStateFromEth1} from "../../../src/chain/genesis/genesis";
+import {applyDeposits, getGenesisBeaconState, getEmptyBlock} from "../../../src/chain/genesis/util";
+import {getTemporaryBlockHeader} from "@chainsafe/lodestar-beacon-state-transition";
 
 describe("Test around Eth1 data", function () {
   const dbDir = "deposit-db";
@@ -193,6 +196,40 @@ describe("Test around Eth1 data", function () {
     console.log([`processed ${totalCount}`, `${validRatio}%`, `${timePerVerify.toFixed(3)}ms`].join("\t"));
 
     console.timeEnd(label);
+  });
+
+  it.only("Build deposit tree at once", async function () {
+    this.timeout("30min");
+
+    const eventsSerialized: IDepositEventSerialized[] = JSON.parse(fs.readFileSync(depositsPath, "utf8"));
+    const events = eventsSerialized.map(deserializeDeposit);
+
+    console.log(`Read ${events.length} deposits`);
+
+    const labelTree = `Build tree with ${events.length} deposits`;
+    const labelApply = `Apply ${events.length} deposits`;
+    console.time(labelTree);
+    console.log(labelTree);
+    const depositTree = config.types.DepositDataRootList.tree.defaultValue();
+    const newDeposits = events.map((depositEvent) => {
+      depositTree.push(config.types.DepositData.hashTreeRoot(depositEvent));
+      return {
+        proof: depositTree.tree().getSingleProof(depositTree.gindexOfProperty(depositEvent.index)),
+        data: depositEvent,
+      };
+    });
+    console.timeEnd(labelTree);
+
+    console.time(labelApply);
+    console.log(labelApply);
+    const state = getGenesisBeaconState(
+      config,
+      config.types.Eth1Data.defaultValue(),
+      getTemporaryBlockHeader(config, getEmptyBlock())
+    );
+
+    applyDeposits(config, state, newDeposits, depositTree, false);
+    console.timeEnd(labelApply);
   });
 });
 

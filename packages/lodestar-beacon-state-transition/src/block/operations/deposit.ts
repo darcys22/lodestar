@@ -13,7 +13,12 @@ import {computeSigningRoot} from "../../util/signingRoot";
 /**
  * Process an Eth1 deposit, registering a validator or increasing its balance.
  */
-export function processDeposit(config: IBeaconConfig, state: BeaconState, deposit: Deposit): void {
+export function processDeposit(
+  config: IBeaconConfig,
+  state: BeaconState,
+  deposit: Deposit,
+  verifySignature = true
+): void {
   // Verify the Merkle branch
   assert.true(
     verifyMerkleBranch(
@@ -33,13 +38,15 @@ export function processDeposit(config: IBeaconConfig, state: BeaconState, deposi
   const amount = deposit.data.amount;
   const validatorIndex = Array.from(state.validators).findIndex((v) => config.types.BLSPubkey.equals(v.pubkey, pubkey));
   if (validatorIndex === -1) {
-    const domain = computeDomain(config, DomainType.DEPOSIT);
-    const signingRoot = computeSigningRoot(config, config.types.DepositMessage, deposit.data, domain);
-    // Verify the deposit signature (proof of possession)
-    // Note: The deposit contract does not check signatures.
-    // Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `computeDomain`.
-    if (!verify(pubkey.valueOf() as Uint8Array, signingRoot, deposit.data.signature.valueOf() as Uint8Array)) {
-      return;
+    if (verifySignature) {
+      const domain = computeDomain(config, DomainType.DEPOSIT);
+      const signingRoot = computeSigningRoot(config, config.types.DepositMessage, deposit.data, domain);
+      // Verify the deposit signature (proof of possession)
+      // Note: The deposit contract does not check signatures.
+      // Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `computeDomain`.
+      if (!verify(pubkey.valueOf() as Uint8Array, signingRoot, deposit.data.signature.valueOf() as Uint8Array)) {
+        return;
+      }
     }
     // Add validator and balance entries
     const validator: Validator = {

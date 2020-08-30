@@ -63,7 +63,8 @@ export function applyDeposits(
   config: IBeaconConfig,
   state: BeaconState,
   newDeposits: Deposit[],
-  fullDepositDataRootList?: TreeBacked<List<Root>>
+  fullDepositDataRootList?: TreeBacked<List<Root>>,
+  verifySignature = true
 ): void {
   const depositDataRootList: Root[] = [];
   if (fullDepositDataRootList) {
@@ -84,7 +85,7 @@ export function applyDeposits(
       );
     }
     state.eth1Data.depositCount += 1;
-    processDeposit(config, state, deposit);
+    processDeposit(config, state, deposit, verifySignature);
   });
 
   // Process activations
