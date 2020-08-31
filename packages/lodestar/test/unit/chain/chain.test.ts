@@ -6,7 +6,7 @@ import {IEth1Provider, Eth1Provider} from "../../../src/eth1";
 import eth1Options from "../../../src/eth1/options";
 import {WinstonLogger, bytesToInt} from "@chainsafe/lodestar-utils";
 import {BeaconMetrics} from "../../../src/metrics";
-import {IBeaconChain, BeaconChain, StatefulDagLMDGHOST} from "../../../src/chain";
+import {IBeaconChain, BeaconChain, ArrayDagLMDGHOST} from "../../../src/chain";
 import {generateState} from "../../utils/state";
 import {StubbedBeaconDb} from "../../utils/stub";
 import {generateValidators} from "../../utils/validator";
@@ -25,7 +25,7 @@ describe("BeaconChain", function () {
     dbStub = new StubbedBeaconDb(sandbox);
     eth1Provider = new Eth1Provider(config, eth1Options);
     metrics = new BeaconMetrics({enabled: false} as any, {logger});
-    forkChoice = sandbox.createStubInstance(StatefulDagLMDGHOST);
+    forkChoice = sandbox.createStubInstance(ArrayDagLMDGHOST);
     const state: BeaconState = generateState();
     state.validators = generateValidators(5, {activationEpoch: 0});
     dbStub.stateCache.get.resolves({state: state as TreeBacked<BeaconState>, epochCtx: new EpochContext(config)});
