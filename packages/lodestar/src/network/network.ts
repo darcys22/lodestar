@@ -38,13 +38,13 @@ export class Libp2pNetwork extends (EventEmitter as {new (): NetworkEventEmitter
   public gossip: IGossip;
   public metadata: MetadataController;
   public peerMetadata: IPeerMetadataStore;
+  public blockProviderScores: IBlockProviderScoreTracker;
 
   private opts: INetworkOptions;
   private config: IBeaconConfig;
   private libp2p: LibP2p;
   private logger: ILogger;
   private metrics: IBeaconMetrics;
-  private blockProviderScores: IBlockProviderScoreTracker;
 
   public constructor(opts: INetworkOptions, {config, libp2p, logger, metrics, validator, chain}: ILibp2pModules) {
     super();
@@ -56,7 +56,13 @@ export class Libp2pNetwork extends (EventEmitter as {new (): NetworkEventEmitter
     this.libp2p = libp2p;
     this.peerMetadata = new Libp2pPeerMetadataStore(this.config, this.libp2p.peerStore.metadataBook);
     this.blockProviderScores = new SimpleBlockProviderScoreTracker(this.peerMetadata);
-    this.reqResp = new ReqResp(opts, {config, libp2p, peerMetadata: this.peerMetadata, logger});
+    this.reqResp = new ReqResp(opts, {
+      config,
+      libp2p,
+      peerMetadata: this.peerMetadata,
+      blockProviderScores: this.blockProviderScores,
+      logger,
+    });
     this.metadata = new MetadataController({}, {config, chain, logger});
     this.gossip = (new Gossip(opts, {config, libp2p, logger, validator, chain}) as unknown) as IGossip;
   }
@@ -105,7 +111,7 @@ export class Libp2pNetwork extends (EventEmitter as {new (): NetworkEventEmitter
       }
       return true;
     });
-    return peers || [];
+    return peers.slice(0, opts?.count ?? peers.length) || [];
   }
 
   public hasPeer(peerId: PeerId, connected = false): boolean {
