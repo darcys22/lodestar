@@ -20,6 +20,7 @@ import {Discv5, Discv5Discovery, ENR} from "@chainsafe/discv5";
 import {IPeerMetadataStore} from "./peers/interface";
 import {Libp2pPeerMetadataStore} from "./peers/metastore";
 import {getPeersWithSubnet} from "./peers/utils";
+import {IBlockProviderScoreTracker, SimpleBlockProviderScoreTracker} from "./peers/score";
 
 interface ILibp2pModules {
   config: IBeaconConfig;
@@ -43,6 +44,7 @@ export class Libp2pNetwork extends (EventEmitter as {new (): NetworkEventEmitter
   private libp2p: LibP2p;
   private logger: ILogger;
   private metrics: IBeaconMetrics;
+  private blockProviderScores: IBlockProviderScoreTracker;
 
   public constructor(opts: INetworkOptions, {config, libp2p, logger, metrics, validator, chain}: ILibp2pModules) {
     super();
@@ -53,6 +55,7 @@ export class Libp2pNetwork extends (EventEmitter as {new (): NetworkEventEmitter
     this.peerId = libp2p.peerId;
     this.libp2p = libp2p;
     this.peerMetadata = new Libp2pPeerMetadataStore(this.config, this.libp2p.peerStore.metadataBook);
+    this.blockProviderScores = new SimpleBlockProviderScoreTracker(this.peerMetadata);
     this.reqResp = new ReqResp(opts, {config, libp2p, peerMetadata: this.peerMetadata, logger});
     this.metadata = new MetadataController({}, {config, chain, logger});
     this.gossip = (new Gossip(opts, {config, libp2p, logger, validator, chain}) as unknown) as IGossip;
